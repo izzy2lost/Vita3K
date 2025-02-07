@@ -25,11 +25,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          git clone https://github.com/microsoft/vcpkg.git
-          cd vcpkg
+          subst X: ${{ github.workspace }}\vcpkg
+          git clone https://github.com/microsoft/vcpkg.git X:
+          cd X:
           .\bootstrap-vcpkg.bat
           .\vcpkg install boost:x64-uwp sdl2:x64-uwp zlib:x64-uwp
-          echo "VCPKG_ROOT=$PWD" >> $GITHUB_ENV
+          echo "VCPKG_ROOT=X:" >> $GITHUB_ENV
         shell: powershell
 
       - name: Configure CMake for UWP

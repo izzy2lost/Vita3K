@@ -1,0 +1,105 @@
+name: Vita3K UWP Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MSVC and Windows SDK
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install dependencies
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          .\vcpkg install boost:x64-uwp sdl2:x64-uwp zlib:x64-uwp
+          echo "VCPKG_ROOT=$PWD" >> $GITHUB_ENV
+        shell: powershell
+
+      - name: Configure CMake for UWP
+        run: |
+          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION=10.0 -S . -B build/uwp
+        shell: powershell
+
+      - name: Build Vita3K for UWP
+        run: |
+          cmake --build build/uwp --config Release
+        shell: powershell
+
+      - name: Generate AppX Manifest
+        run: |
+          $manifest = @"
+          <?xml version="1.0" encoding="utf-8"?>
+          <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" 
+                   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+                   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+                   IgnorableNamespaces="uap rescap">
+              <Identity Name="Vita3K.UWP" Version="1.0.0.0" Publisher="CN=Vita3K" />
+              <Properties>
+                  <DisplayName>Vita3K UWP</DisplayName>
+                  <PublisherDisplayName>Vita3K Team</PublisherDisplayName>
+                  <Logo>Assets\StoreLogo.png</Logo>
+              </Properties>
+              <Dependencies>
+                  <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22000.0"/>
+              </Dependencies>
+              <Resources>
+                  <Resource Language="en-us"/>
+              </Resources>
+              <Applications>
+                  <Application Id="App" Executable="Vita3K.exe" EntryPoint="Windows.FullTrustApplication">
+                      <uap:VisualElements DisplayName="Vita3K" Description="PlayStation Vita Emulator"
+                          Square150x150Logo="Assets\Square150x150Logo.png"
+                          Square44x44Logo="Assets\Square44x44Logo.png"
+                          BackgroundColor="transparent"/>
+                  </Application>
+              </Applications>
+              <Capabilities>
+                  <rescap:Capability Name="runFullTrust"/>
+              </Capabilities>
+          </Package>
+          "@
+          $manifest | Out-File -Encoding utf8 build/uwp/Package.appxmanifest
+        shell: powershell
+
+      - name: Package UWP App
+        run: |
+          cd build/uwp
+          New-Item -ItemType Directory -Path "AppxContent"
+          Copy-Item -Path "Release\*" -Destination "AppxContent" -Recurse
+          MakeAppx pack /d AppxContent /p Vita3K_UWP.appx
+        shell: powershell
+
+      - name: Generate Self-Signed Certificate
+        run: |
+          New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Vita3K" -CertStoreLocation Cert:\CurrentUser\My
+        shell: powershell
+
+      - name: Sign AppX Package
+        env:
+          PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
+        run: |
+          SignTool sign /fd SHA256 /a /f Vita3K.pfx /p $env:PFX_PASSWORD Vita3K_UWP.appx
+        shell: powershell
+
+      - name: Upload Signed AppX Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vita3K-UWP-Appx-Signed
+          path: build/uwp/Vita3K_UWP.appx

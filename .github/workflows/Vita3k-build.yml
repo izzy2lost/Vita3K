@@ -36,7 +36,9 @@ jobs:
 
       - name: Configure CMake for UWP
         run: |
-          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore -S . -B build/uwp
+          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore \
+          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.19041.0 \
+          -S . -B build/uwp
         shell: powershell
 
       - name: Build Vita3K for UWP

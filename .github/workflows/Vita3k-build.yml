@@ -25,7 +25,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          subst X: ${{ github.workspace }}\vcpkg
+          mkdir D:\a\Vita3K\Vita3K\vcpkg
+          subst X: D:\a\Vita3K\Vita3K\vcpkg
           git clone https://github.com/microsoft/vcpkg.git X:
           cd X:
           .\bootstrap-vcpkg.bat

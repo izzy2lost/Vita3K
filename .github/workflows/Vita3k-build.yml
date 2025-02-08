@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2019
 
     steps:
       - name: Checkout repository
@@ -48,7 +48,7 @@ jobs:
         run: |
           cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore `
           -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
-          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.19041.0 `
+          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.17763 `
           -S . -B build/uwp
         shell: powershell
 
@@ -72,7 +72,7 @@ jobs:
                   <Logo>Assets\StoreLogo.png</Logo>
               </Properties>
               <Dependencies>
-                  <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22000.0"/>
+                  <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763" MaxVersionTested="10.0.17763"/>
               </Dependencies>
               <Resources>
                   <Resource Language="en-us"/>

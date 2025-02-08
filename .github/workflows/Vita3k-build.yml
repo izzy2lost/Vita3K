@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: windows-2022
 
     env:
       BuildDir: build/uwp
@@ -49,12 +49,29 @@ jobs:
           .\bootstrap-vcpkg.bat
           .\vcpkg install boost:x64-uwp sdl2:x64-uwp zlib:x64-uwp
         shell: powershell
-        
-      - name: Check cmake version 
+
+      - name: Install CMake 3.17.2
+        run: |
+          choco install cmake --version=3.17.2 -y
+          echo "CMAKE_PATH=$(choco info cmake | findstr 'Install Path' | cut -d: -f2)" >> $GITHUB_ENV
+        shell: powershell
+
+      - name: Install Windows SDK 10.0.17763.0 (if not installed)
+        run: |
+          $SDKPath = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0"
+          if (-Not (Test-Path $SDKPath)) {
+            Write-Host "Installing Windows SDK 10.0.17763.0"
+            choco install windows-sdk-10.0.17763.0 -y
+          } else {
+            Write-Host "Windows SDK 10.0.17763.0 is already installed"
+          }
+        shell: powershell
+
+      - name: Check CMake version
         shell: cmd
         run: |
           cmake --version
-          
+
       - name: Ccache setup
         run: choco install ccache
 
@@ -62,7 +79,7 @@ jobs:
         shell: cmd
         run: |
           call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
-          cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore ^
+          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore ^
           -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake ^
           -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.17763 ^
           -S . -B %BuildDir%

@@ -1,16 +1,25 @@
 name: Vita3K UWP Build
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag Name'
+        required: true
+        default: 'v1.0.0'
+      package_name:
+        description: 'Package Name'
+        required: true
+        default: 'Vita3K-UWP'
 
 jobs:
   build:
     runs-on: windows-2019
+
+    env:
+      BuildDir: build/uwp
+      PackageOutputRootDir: C:\AppPackage
+      PackageOutputDir: Vita3K-UWP
 
     steps:
       - name: Checkout repository
@@ -49,72 +58,77 @@ jobs:
           cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore `
           -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
           -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.17763 `
-          -S . -B build/uwp
+          -S . -B $env:BuildDir
         shell: powershell
 
       - name: Build Vita3K for UWP
         run: |
-          cmake --build build/uwp --config Release
-        shell: powershell
-
-      - name: Generate AppX Manifest
-        run: |
-          $manifest = @"
-          <?xml version="1.0" encoding="utf-8"?>
-          <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" 
-                   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-                   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-                   IgnorableNamespaces="uap rescap">
-              <Identity Name="Vita3K.UWP" Version="1.0.0.0" Publisher="CN=Vita3K" />
-              <Properties>
-                  <DisplayName>Vita3K UWP</DisplayName>
-                  <PublisherDisplayName>Vita3K Team</PublisherDisplayName>
-                  <Logo>Assets\StoreLogo.png</Logo>
-              </Properties>
-              <Dependencies>
-                  <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763" MaxVersionTested="10.0.17763"/>
-              </Dependencies>
-              <Resources>
-                  <Resource Language="en-us"/>
-              </Resources>
-              <Applications>
-                  <Application Id="App" Executable="Vita3K.exe" EntryPoint="Windows.FullTrustApplication">
-                      <uap:VisualElements DisplayName="Vita3K" Description="PlayStation Vita Emulator"
-                          Square150x150Logo="Assets\Square150x150Logo.png"
-                          Square44x44Logo="Assets\Square44x44Logo.png"
-                          BackgroundColor="transparent"/>
-                  </Application>
-              </Applications>
-              <Capabilities>
-                  <rescap:Capability Name="runFullTrust"/>
-              </Capabilities>
-          </Package>
-          "@
-          $manifest | Out-File -Encoding utf8 build/uwp/Package.appxmanifest
-        shell: powershell
-
-      - name: Package UWP App
-        run: |
-          cd build/uwp
-          New-Item -ItemType Directory -Path "AppxContent"
-          Copy-Item -Path "Release\*" -Destination "AppxContent" -Recurse
-          MakeAppx pack /d AppxContent /p Vita3K_UWP.appx
+          cmake --build $env:BuildDir --config Release
         shell: powershell
 
       - name: Generate Self-Signed Certificate
+        id: generate_cert
         run: |
-          New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Vita3K" -CertStoreLocation Cert:\CurrentUser\My
-        shell: powershell
+          $cert = New-SelfSignedCertificate -CertStoreLocation "Cert:\CurrentUser\My" -Subject "CN=Vita3K" `
+          -KeyAlgorithm RSA -KeyLength 2048 -Provider "Microsoft Enhanced RSA and AES Cryptographic Provider" `
+          -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(1) -Type CodeSigningCert
+          echo "THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Set Package Name
+        id: set_package_name
+        run: |
+          echo "PACKAGE_NAME=${{ github.event.inputs.package_name }}_${{ github.event.inputs.tag_name }}" >> $GITHUB_ENV
+        shell: pwsh
+
+      - name: Package UWP App
+        run: |
+          cd $env:BuildDir
+          New-Item -ItemType Directory -Path "AppxContent"
+          Copy-Item -Path "Release\*" -Destination "AppxContent" -Recurse
+          MakeAppx pack /d AppxContent /p Vita3K_UWP.appx
+        shell: pwsh
 
       - name: Sign AppX Package
-        env:
-          PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
         run: |
-          SignTool sign /fd SHA256 /a /f Vita3K.pfx /p $env:PFX_PASSWORD Vita3K_UWP.appx
-        shell: powershell
+          SignTool sign /fd SHA256 /a /sha1 "${{ env.THUMBPRINT }}" Vita3K_UWP.appx
+        shell: pwsh
 
-      - name: Upload Signed AppX Package
+      - name: Clean the Package
+        run: |
+          $PackagePath = "${{ env.PackageOutputRootDir }}\${{ env.PACKAGE_NAME }}"
+          if (Test-Path $PackagePath) {
+            Write-Host "Cleaning package directory: $PackagePath"
+            Remove-Item -Recurse -path "$PackagePath\Add-AppDevPackage.resources" -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -path "$PackagePath\TelemetryDependencies" -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -path "$PackagePath\Dependencies\arm" -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -path "$PackagePath\Dependencies\arm64" -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -path "$PackagePath\Dependencies\x86" -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -path "$PackagePath\Dependencies\Win32" -ErrorAction SilentlyContinue
+            Remove-Item -path "$PackagePath\Add-AppDevPackage.ps1" -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -path "$PackagePath\Install.ps1" -ErrorAction SilentlyContinue
+          } else {
+            Write-Host "Package path does not exist: $PackagePath"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Create Archive
+        run: |
+          $PackagePath = "${{ env.PackageOutputRootDir }}\${{ env.PACKAGE_NAME }}"
+          if (Test-Path $PackagePath) {
+            Write-Host "Creating archive for: $PackagePath"
+            Compress-Archive -Path "$PackagePath\*" -DestinationPath "${{ env.PackageOutputRootDir }}\${{ env.PACKAGE_NAME }}.zip"
+            Write-Host "Contents of package output directory after archiving:"
+            Get-ChildItem -Path "${{ env.PackageOutputRootDir }}" -Recurse
+          } else {
+            Write-Host "Package path does not exist for archiving: $PackagePath"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Vita3K-UWP-Appx-Signed
-          path: build/uwp/Vita3K_UWP.appx
+          name: ${{ github.event.inputs.package_name }} Build
+          path: ${{ env.PackageOutputRootDir }}\${{ env.PACKAGE_NAME }}

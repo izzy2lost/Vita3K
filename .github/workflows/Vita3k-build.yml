@@ -56,9 +56,9 @@ jobs:
           choco uninstall cmake.install -y
         shell: powershell
 
-      - name: Install CMake 3.17.2
+      - name: Install CMake 3.18
         run: |
-          choco install cmake --version=3.17.2 --force -y
+          choco install cmake --version=3.18 --force -y
           echo "CMAKE_PATH=$(choco info cmake | findstr 'Install Path' | cut -d: -f2)" >> $GITHUB_ENV
         shell: powershell
 

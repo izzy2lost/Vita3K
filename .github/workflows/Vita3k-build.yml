@@ -86,10 +86,11 @@ jobs:
         run: |
           call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
           cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore ^
+          -DCMAKE_SYSTEM_VERSION=10.0 ^
           -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake ^
           -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.17763 ^
           -S . -B %BuildDir%
-
+          
       - name: Build Vita3K for UWP
         shell: cmd
         run: |

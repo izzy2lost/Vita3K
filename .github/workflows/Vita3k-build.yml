@@ -31,14 +31,16 @@ jobs:
           cd X:
           .\bootstrap-vcpkg.bat
           .\vcpkg install boost:x64-uwp sdl2:x64-uwp zlib:x64-uwp
-          echo "VCPKG_ROOT=X:" >> $GITHUB_ENV
+          echo "VCPKG_ROOT=X:" >> $env:GITHUB_ENV
         shell: powershell
 
       - name: Configure CMake for UWP
         run: |
-          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore 
-          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.19041.0
-          -S . -B build/uwp
+          cmake -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_SYSTEM_NAME=WindowsStore `
+            -DCMAKE_SYSTEM_VERSION=10.0.19041.0 `
+            -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.19041.0 `
+            -S . -B build/uwp
         shell: powershell
 
       - name: Build Vita3K for UWP
@@ -92,14 +94,15 @@ jobs:
 
       - name: Generate Self-Signed Certificate
         run: |
-          New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Vita3K" -CertStoreLocation Cert:\CurrentUser\My
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Vita3K" -CertStoreLocation Cert:\CurrentUser\My
+          $pfxPath = "$env:RUNNER_TEMP\Vita3K.pfx"
+          $cert | Export-PfxCertificate -FilePath $pfxPath -Password (ConvertTo-SecureString -String "password" -Force -AsPlainText)
+          echo "PFX_PATH=$pfxPath" >> $env:GITHUB_ENV
         shell: powershell
 
       - name: Sign AppX Package
-        env:
-          PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
         run: |
-          SignTool sign /fd SHA256 /a /f Vita3K.pfx /p $env:PFX_PASSWORD Vita3K_UWP.appx
+          SignTool sign /fd SHA256 /a /f "$env:PFX_PATH" /p password build/uwp/Vita3K_UWP.appx
         shell: powershell
 
       - name: Upload Signed AppX Package

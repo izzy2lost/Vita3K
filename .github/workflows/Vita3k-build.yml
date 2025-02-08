@@ -50,9 +50,15 @@ jobs:
           .\vcpkg install boost:x64-uwp sdl2:x64-uwp zlib:x64-uwp
         shell: powershell
 
+      - name: Uninstall existing CMake version
+        run: |
+          choco uninstall cmake -y
+          choco uninstall cmake.install -y
+        shell: powershell
+
       - name: Install CMake 3.17.2
         run: |
-          choco install cmake --version=3.17.2 -y
+          choco install cmake --version=3.17.2 --force -y
           echo "CMAKE_PATH=$(choco info cmake | findstr 'Install Path' | cut -d: -f2)" >> $GITHUB_ENV
         shell: powershell
 

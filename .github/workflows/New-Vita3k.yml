@@ -9,7 +9,7 @@ jobs:
     
     steps:
       # Step 1: Set up Visual Studio 2022 with C++ workload
-      - name: setup-msbuild
+      - name: Setup Visual Studio 2022
         uses: microsoft/setup-msbuild@v2
 
       # Step 2: Checkout the repository with submodules
@@ -18,13 +18,7 @@ jobs:
         with:
           submodules: true
 
-      # Step 3: Install a specific version of CMake (optional)
-      - name: Install CMake
-        run: |
-          choco install cmake --version=3.22.2 --confirm
-          cmake --version
-
-      # Step 4: Set Boost environment variable
+      # Step 4: Set BOOST_ROOT environment variable
       - name: Set BOOST_ROOT environment variable
         run: echo "BOOST_ROOT=D:/a/Vita3K/Vita3K/external/boost" >> $GITHUB_ENV
 
@@ -34,18 +28,20 @@ jobs:
           echo "cmake_policy(SET CMP0144 NEW)" >> CMakeLists.txt
           echo "cmake_policy(SET CMP0167 NEW)" >> CMakeLists.txt
 
-      # Step 6: Setup CMake Action with Visual Studio 2022 generator
-      - name: CMake Action
-        uses: threeal/cmake-action@v2.1.0
-        with:
-          generator: "Visual Studio 17 2022"
+      # Step 6: Run the Visual Studio 2022 Developer Command Prompt
+      - name: Run Visual Studio Developer Command Prompt
+        shell: cmd
+        run: |
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
 
       # Step 7: Generate the Visual Studio project with CMake
       - name: Generate project with CMake
+        shell: cmd
         run: cmake --preset windows-vs2022 -Wno-dev
 
       # Step 8: Build the project
       - name: Build the project
+        shell: cmd
         run: cmake --build build/windows-vs2022 --config Release
 
       # Step 9: Archive the build if needed

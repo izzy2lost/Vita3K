@@ -12,27 +12,25 @@ jobs:
       - name: setup-msbuild
         uses: microsoft/setup-msbuild@v2
 
-      # Step 2: Clone the repository
-      - name: Clone Vita3K repository
-        run: git clone --recursive https://github.com/Vita3K/Vita3K
-      
-      # Step 3: Change directory to the repository
-      - name: Change directory to Vita3K
-        run: cd Vita3K
-        
-      # Step 4: Setup Cmake
+      # Step 2: Checkout the repository with submodules
+      - name: Checkout Vita3K repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # Step 3: Setup CMake
       - name: CMake Action
         uses: threeal/cmake-action@v2.1.0
 
-      # Step 5: Generate the Visual Studio project with CMake
+      # Step 4: Generate the Visual Studio project with CMake
       - name: Generate project with CMake
         run: cmake --preset windows-vs2022
 
-      # Step 6: Build the project
+      # Step 5: Build the project
       - name: Build the project
         run: cmake --build build/windows-vs2022 --config Release
 
-      # Step 7: Archive the build if needed
+      # Step 6: Archive the build if needed
       - name: Archive Build Artifacts
         uses: actions/upload-artifact@v4
         with:

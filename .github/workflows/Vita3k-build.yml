@@ -54,17 +54,19 @@ jobs:
         run: choco install ccache
 
       - name: Configure CMake for UWP
+        shell: cmd
         run: |
-          cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore `
-          -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
-          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.17763 `
-          -S . -B $env:BuildDir
-        shell: powershell
+          call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
+          cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore ^
+          -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake ^
+          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.17763 ^
+          -S . -B %BuildDir%
 
       - name: Build Vita3K for UWP
+        shell: cmd
         run: |
-          cmake --build $env:BuildDir --config Release
-        shell: powershell
+          call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
+          cmake --build %BuildDir% --config Release
 
       - name: Generate Self-Signed Certificate
         id: generate_cert
@@ -82,17 +84,18 @@ jobs:
         shell: pwsh
 
       - name: Package UWP App
+        shell: cmd
         run: |
-          cd $env:BuildDir
-          New-Item -ItemType Directory -Path "AppxContent"
-          Copy-Item -Path "Release\*" -Destination "AppxContent" -Recurse
+          cd %BuildDir%
+          mkdir AppxContent
+          xcopy Release\* AppxContent\ /E /I
           MakeAppx pack /d AppxContent /p Vita3K_UWP.appx
-        shell: pwsh
 
       - name: Sign AppX Package
+        shell: cmd
         run: |
-          SignTool sign /fd SHA256 /a /sha1 "${{ env.THUMBPRINT }}" Vita3K_UWP.appx
-        shell: pwsh
+          call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
+          SignTool sign /fd SHA256 /a /sha1 "%THUMBPRINT%" Vita3K_UWP.appx
 
       - name: Clean the Package
         run: |

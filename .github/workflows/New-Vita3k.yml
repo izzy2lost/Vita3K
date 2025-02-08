@@ -1,0 +1,53 @@
+name: Build Vita3K for UWP
+
+on:
+  push:
+    branches:
+      - master 
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+      # Step 1: Set up Visual Studio 2022 with C++ workload
+      - name: Set up Visual Studio 2022
+        uses: microsoft/setup-msbuild@v1
+        with:
+          vs-version: '2022'
+
+      # Step 2: Install CMake
+      - name: Install CMake
+        uses: triage-cd/cmake-action@v2
+        with:
+          cmake-version: 'latest'
+        
+      # Step 3: Install Git
+      - name: Install Git
+        uses: actions/setup-git@v2
+
+      # Step 4: Clone the repository
+      - name: Clone Vita3K repository
+        run: git clone --recursive https://github.com/Vita3K/Vita3K
+      
+      # Step 5: Change directory to the repository
+      - name: Change directory to Vita3K
+        run: cd Vita3K
+
+      # Step 6: Generate the Visual Studio project with CMake
+      - name: Generate project with CMake
+        run: cmake --preset windows-vs2022
+
+      # Step 7: Build the project
+      - name: Build the project
+        run: cmake --build build/windows-vs2022 --config Release
+
+      # Optional Step 8: Archive the build if needed
+      - name: Archive Build Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Vita3K-Build
+          path: build/windows-vs2022/bin/Release

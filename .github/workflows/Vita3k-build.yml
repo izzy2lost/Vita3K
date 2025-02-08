@@ -49,7 +49,12 @@ jobs:
           .\bootstrap-vcpkg.bat
           .\vcpkg install boost:x64-uwp sdl2:x64-uwp zlib:x64-uwp
         shell: powershell
-
+        
+      - name: Check cmake version 
+        shell: cmd
+        run: |
+          cmake --version
+          
       - name: Ccache setup
         run: choco install ccache
 

@@ -14,7 +14,7 @@ jobs:
 
       # Step 2: Checkout the repository with submodules
       - name: Checkout Vita3K repository with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -23,16 +23,32 @@ jobs:
         run: |
           choco install cmake --version=3.22.2 --confirm
           cmake --version
-          
-      # Step 4: Generate the Visual Studio project with CMake
-      - name: Generate project with CMake
-        run: cmake --preset windows-vs2022
 
-      # Step 5: Build the project
+      # Step 4: Set Boost environment variable
+      - name: Set BOOST_ROOT environment variable
+        run: echo "BOOST_ROOT=D:/a/Vita3K/Vita3K/external/boost" >> $GITHUB_ENV
+
+      # Step 5: Set CMake Policies to avoid warnings related to Boost
+      - name: Set CMake Policies
+        run: |
+          echo "cmake_policy(SET CMP0144 NEW)" >> CMakeLists.txt
+          echo "cmake_policy(SET CMP0167 NEW)" >> CMakeLists.txt
+
+      # Step 6: Setup CMake Action with Visual Studio 2022 generator
+      - name: CMake Action
+        uses: threeal/cmake-action@v2.1.0
+        with:
+          generator: "Visual Studio 17 2022"
+
+      # Step 7: Generate the Visual Studio project with CMake
+      - name: Generate project with CMake
+        run: cmake --preset windows-vs2022 -Wno-dev
+
+      # Step 8: Build the project
       - name: Build the project
         run: cmake --build build/windows-vs2022 --config Release
 
-      # Step 6: Archive the build if needed
+      # Step 9: Archive the build if needed
       - name: Archive Build Artifacts
         uses: actions/upload-artifact@v4
         with:

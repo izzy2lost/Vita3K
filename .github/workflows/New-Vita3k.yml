@@ -18,13 +18,12 @@ jobs:
         with:
           submodules: true
 
-      # Step 3: Setup CMake
-      - name: CMake Action
-        uses: threeal/cmake-action@v2.1.0
-        with:
-         generator: "Visual Studio 17 2022"
-         cmake-version: "3.22.2"
-
+      # Step 3: Install a specific version of CMake (optional)
+      - name: Install CMake
+        run: |
+          choco install cmake --version=3.22.2 --confirm
+          cmake --version
+          
       # Step 4: Generate the Visual Studio project with CMake
       - name: Generate project with CMake
         run: cmake --preset windows-vs2022

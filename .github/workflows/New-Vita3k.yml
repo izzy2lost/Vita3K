@@ -15,8 +15,8 @@ jobs:
           vs-version: '2022'
 
       # Step 2: Install CMake
-      - name: Install CMake
-        uses: triage-cd/cmake-action@v2
+      - name: CMake Action
+        uses: threeal/cmake-action@v2.1.0
         with:
           cmake-version: 'latest'
         

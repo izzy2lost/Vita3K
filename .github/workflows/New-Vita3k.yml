@@ -20,29 +20,25 @@ jobs:
         with:
           cmake-version: 'latest'
         
-      # Step 3: Install Git
-      - name: Install Git
-        uses: actions/setup-git@v2
-
-      # Step 4: Clone the repository
+      # Step 3: Clone the repository
       - name: Clone Vita3K repository
         run: git clone --recursive https://github.com/Vita3K/Vita3K
       
-      # Step 5: Change directory to the repository
+      # Step 4: Change directory to the repository
       - name: Change directory to Vita3K
         run: cd Vita3K
 
-      # Step 6: Generate the Visual Studio project with CMake
+      # Step 5: Generate the Visual Studio project with CMake
       - name: Generate project with CMake
         run: cmake --preset windows-vs2022
 
-      # Step 7: Build the project
+      # Step 6: Build the project
       - name: Build the project
         run: cmake --build build/windows-vs2022 --config Release
 
-      # Optional Step 8: Archive the build if needed
+      # Step 7: Archive the build if needed
       - name: Archive Build Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: Vita3K-Build
           path: build/windows-vs2022/bin/Release

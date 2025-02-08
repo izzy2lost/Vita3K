@@ -1,166 +1,48 @@
-name: Vita3K UWP Build
+name: Build Vita3K for UWP
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 'Tag Name'
-        required: true
-        default: 'v1.0.0'
-      package_name:
-        description: 'Package Name'
-        required: true
-        default: 'Vita3K-UWP'
+  workflow_dispatch
 
 jobs:
   build:
-    runs-on: windows-2019
-
-    env:
-      BuildDir: build/uwp
-      PackageOutputRootDir: C:\AppPackage
-      PackageOutputDir: Vita3K-UWP
-
+    runs-on: windows-latest
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      # Step 1: Set up Visual Studio 2022 with C++ workload
+      - name: Set up Visual Studio 2022
+        uses: microsoft/setup-msbuild@v1
         with:
-          submodules: recursive
+          vs-version: '2022'
 
-      - name: Set up MSVC and Windows SDK
-        uses: ilammy/msvc-dev-cmd@v1
+      # Step 2: Install CMake
+      - name: Install CMake
+        uses: triage-cd/cmake-action@v2
         with:
-          arch: x64
+          cmake-version: 'latest'
+        
+      # Step 3: Install Git
+      - name: Install Git
+        uses: actions/setup-git@v2
 
-      - name: Cache vcpkg
-        uses: actions/cache@v4
+      # Step 4: Clone the repository
+      - name: Clone Vita3K repository
+        run: git clone --recursive https://github.com/Vita3K/Vita3K
+      
+      # Step 5: Change directory to the repository
+      - name: Change directory to Vita3K
+        run: cd Vita3K
+
+      # Step 6: Generate the Visual Studio project with CMake
+      - name: Generate project with CMake
+        run: cmake --preset windows-vs2022
+
+      # Step 7: Build the project
+      - name: Build the project
+        run: cmake --build build/windows-vs2022 --config Release
+
+      # Optional Step 8: Archive the build if needed
+      - name: Archive Build Artifacts
+        uses: actions/upload-artifact@v2
         with:
-          path: |
-            C:\vcpkg\installed
-            C:\vcpkg\packages
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
-          restore-keys: |
-            vcpkg-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
-          cd C:\vcpkg
-          .\bootstrap-vcpkg.bat
-          .\vcpkg install boost:x64-uwp sdl2:x64-uwp zlib:x64-uwp
-        shell: powershell
-
-      - name: Uninstall existing CMake version
-        run: |
-          choco uninstall cmake -y
-          choco uninstall cmake.install -y
-        shell: powershell
-
-      - name: Install CMake 3.18
-        run: |
-          choco install cmake --version=3.18 --force -y
-          echo "CMAKE_PATH=$(choco info cmake | findstr 'Install Path' | cut -d: -f2)" >> $GITHUB_ENV
-        shell: powershell
-
-      - name: Install Windows SDK 10.0.17763.0 (if not installed)
-        run: |
-          $SDKPath = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0"
-          if (-Not (Test-Path $SDKPath)) {
-            Write-Host "Installing Windows SDK 10.0.17763.0"
-            choco install windows-sdk-10.0.17763.0 -y
-          } else {
-            Write-Host "Windows SDK 10.0.17763.0 is already installed"
-          }
-        shell: powershell
-
-      - name: Check CMake version
-        shell: cmd
-        run: |
-          cmake --version
-
-      - name: Ccache setup
-        run: choco install ccache
-
-      - name: Configure CMake for UWP
-        shell: cmd
-        run: |
-          call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
-          cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_SYSTEM_NAME=WindowsStore ^
-          -DCMAKE_SYSTEM_VERSION=10.0 ^
-          -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake ^
-          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.17763 ^
-          -S . -B %BuildDir%
-          
-      - name: Build Vita3K for UWP
-        shell: cmd
-        run: |
-          call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
-          cmake --build %BuildDir% --config Release
-
-      - name: Generate Self-Signed Certificate
-        id: generate_cert
-        run: |
-          $cert = New-SelfSignedCertificate -CertStoreLocation "Cert:\CurrentUser\My" -Subject "CN=Vita3K" `
-          -KeyAlgorithm RSA -KeyLength 2048 -Provider "Microsoft Enhanced RSA and AES Cryptographic Provider" `
-          -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(1) -Type CodeSigningCert
-          echo "THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
-        shell: pwsh
-
-      - name: Set Package Name
-        id: set_package_name
-        run: |
-          echo "PACKAGE_NAME=${{ github.event.inputs.package_name }}_${{ github.event.inputs.tag_name }}" >> $GITHUB_ENV
-        shell: pwsh
-
-      - name: Package UWP App
-        shell: cmd
-        run: |
-          cd %BuildDir%
-          mkdir AppxContent
-          xcopy Release\* AppxContent\ /E /I
-          MakeAppx pack /d AppxContent /p Vita3K_UWP.appx
-
-      - name: Sign AppX Package
-        shell: cmd
-        run: |
-          call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
-          SignTool sign /fd SHA256 /a /sha1 "%THUMBPRINT%" Vita3K_UWP.appx
-
-      - name: Clean the Package
-        run: |
-          $PackagePath = "${{ env.PackageOutputRootDir }}\${{ env.PACKAGE_NAME }}"
-          if (Test-Path $PackagePath) {
-            Write-Host "Cleaning package directory: $PackagePath"
-            Remove-Item -Recurse -path "$PackagePath\Add-AppDevPackage.resources" -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -path "$PackagePath\TelemetryDependencies" -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -path "$PackagePath\Dependencies\arm" -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -path "$PackagePath\Dependencies\arm64" -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -path "$PackagePath\Dependencies\x86" -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -path "$PackagePath\Dependencies\Win32" -ErrorAction SilentlyContinue
-            Remove-Item -path "$PackagePath\Add-AppDevPackage.ps1" -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -path "$PackagePath\Install.ps1" -ErrorAction SilentlyContinue
-          } else {
-            Write-Host "Package path does not exist: $PackagePath"
-            exit 1
-          }
-        shell: pwsh
-
-      - name: Create Archive
-        run: |
-          $PackagePath = "${{ env.PackageOutputRootDir }}\${{ env.PACKAGE_NAME }}"
-          if (Test-Path $PackagePath) {
-            Write-Host "Creating archive for: $PackagePath"
-            Compress-Archive -Path "$PackagePath\*" -DestinationPath "${{ env.PackageOutputRootDir }}\${{ env.PACKAGE_NAME }}.zip"
-            Write-Host "Contents of package output directory after archiving:"
-            Get-ChildItem -Path "${{ env.PackageOutputRootDir }}" -Recurse
-          } else {
-            Write-Host "Package path does not exist for archiving: $PackagePath"
-            exit 1
-          }
-        shell: pwsh
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.inputs.package_name }} Build
-          path: ${{ env.PackageOutputRootDir }}\${{ env.PACKAGE_NAME }}
+          name: Vita3K-Build
+          path: build/windows-vs2022/bin/Release

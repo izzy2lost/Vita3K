@@ -9,10 +9,8 @@ jobs:
     
     steps:
       # Step 1: Set up Visual Studio 2022 with C++ workload
-      - name: Set up Visual Studio 2022
-        uses: microsoft/setup-msbuild@v1
-        with:
-          vs-version: '2022'
+      - name: setup-msbuild
+        uses: microsoft/setup-msbuild@v2
 
       # Step 2: Install CMake
       - name: CMake Action

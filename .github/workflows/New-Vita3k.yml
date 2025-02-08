@@ -12,17 +12,17 @@ jobs:
       - name: setup-msbuild
         uses: microsoft/setup-msbuild@v2
 
-      # Step 2: Install CMake
-      - name: CMake Action
-        uses: threeal/cmake-action@v2.1.0
-        
-      # Step 3: Clone the repository
+      # Step 2: Clone the repository
       - name: Clone Vita3K repository
         run: git clone --recursive https://github.com/Vita3K/Vita3K
       
-      # Step 4: Change directory to the repository
+      # Step 3: Change directory to the repository
       - name: Change directory to Vita3K
         run: cd Vita3K
+        
+      # Step 4: Setup Cmake
+      - name: CMake Action
+        uses: threeal/cmake-action@v2.1.0
 
       # Step 5: Generate the Visual Studio project with CMake
       - name: Generate project with CMake

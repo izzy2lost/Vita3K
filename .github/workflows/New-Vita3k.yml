@@ -15,8 +15,6 @@ jobs:
       # Step 2: Install CMake
       - name: CMake Action
         uses: threeal/cmake-action@v2.1.0
-        with:
-          cmake-version: 'latest'
         
       # Step 3: Clone the repository
       - name: Clone Vita3K repository

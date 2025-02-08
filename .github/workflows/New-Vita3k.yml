@@ -32,7 +32,7 @@ jobs:
       - name: Run Visual Studio Developer Command Prompt
         shell: cmd
         run: |
-          call "C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
 
       # Step 7: Generate the Visual Studio project with CMake
       - name: Generate project with CMake
